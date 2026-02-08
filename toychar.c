@@ -2,12 +2,14 @@
 #include <linux/fs.h> 
 #include <linux/uaccess.h> 
 #include <linux/cdev.h> 
+#include <linux/mutex.h> 
 
 #define DEVICE_NAME "derchar"
 #define BUF_SIZE 256
 
 static dev_t devno;
 static struct cdev toy_cdev;
+static DEFINE_MUTEX(toy_lock);
 
 static char kernel_buf[BUF_SIZE];
 static size_t buf_len;
@@ -25,19 +27,28 @@ static ssize_t toy_read(struct file *file,
 {
     ssize_t ret;
 
-    if (*ppos >= buf_len)
-        return 0;
+    if (mutex_lock_interruptible(&toy_lock)) 
+        return -ERESTARTSYS;
+
+    if (*ppos >= buf_len) {
+        ret = 0;
+        goto out;
+    }
 
     if (count > buf_len - *ppos)
         count = buf_len - *ppos;
 
-    if (copy_to_user(user_buf, kernel_buf + *ppos, count))
-        return -EFAULT;
+    if (copy_to_user(user_buf, kernel_buf + *ppos, count)) {
+        ret = -EFAULT;
+        goto out;
+    }
 
     *ppos += count;
     ret = count;
 
+out: 
     pr_info("derchar: %zu bytes\n", ret);
+    mutex_unlock(&toy_lock);
     return ret; 
 }
 
@@ -46,15 +57,26 @@ static ssize_t toy_write(struct file *file,
                          size_t count, 
                          loff_t *ppos)
 {
+    ssize_t ret;
+    
+    if (copy_from_user(kernel_buf, user_buf, count))
+        return -ERESTARTSYS;
+
     if (count > BUF_SIZE)
         count = BUF_SIZE;
 
-    if (copy_from_user(kernel_buf, user_buf, count))
-        return -EFAULT;
+    if (copy_from_user(kernel_buf, user_buf, count)) {
+        ret = -EFAULT;
+        goto out;
+    }
 
     buf_len = count;
+    ret = count;
+
+out:
     pr_info("derchar: wrote %zu bytes\n", count);
-    return count; 
+    mutex_unlock(&toy_lock);
+    return ret; 
 }
 
 static const struct file_operations toy_fops = {

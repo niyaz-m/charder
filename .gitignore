@@ -1,0 +1,16 @@
+..module-common.o.cmd
+.Module.symvers.cmd
+.module-common.o
+.modules.order.cmd
+.toychar.ko.cmd
+.toychar.mod.cmd
+.toychar.mod.o.cmd
+.toychar.o.cmd
+Module.symvers
+modules.order
+toychar.ko
+toychar.mod
+toychar.mod.c
+toychar.mod.o
+toychar.o
+
