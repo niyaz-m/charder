@@ -59,7 +59,7 @@ static ssize_t toy_write(struct file *file,
 {
     ssize_t ret;
     
-    if (copy_from_user(kernel_buf, user_buf, count))
+    if (mutex_lock_interruptible(&toy_lock))
         return -ERESTARTSYS;
 
     if (count > BUF_SIZE)
@@ -71,6 +71,8 @@ static ssize_t toy_write(struct file *file,
     }
 
     buf_len = count;
+    *ppos = count;
+
     ret = count;
 
 out:
