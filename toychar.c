@@ -8,26 +8,26 @@
 #define BUF_SIZE 256
 
 static dev_t devno;
-static struct cdev toy_cdev;
-static DEFINE_MUTEX(toy_lock);
+static struct cdev cdev;
+static DEFINE_MUTEX(cdev_lock);
 
 static char kernel_buf[BUF_SIZE];
 static size_t buf_len;
 
-static int toy_open(struct inode *inode, struct file *file) 
+static int cdev_open(struct inode *inode, struct file *file) 
 {
     pr_info("derchar: device opened\n");
     return 0;
 }
 
-static ssize_t toy_read(struct file *file, 
+static ssize_t cdev_read(struct file *file, 
                         char __user *user_buf,
                         size_t count, 
                         loff_t *ppos)
 {
     ssize_t ret;
 
-    if (mutex_lock_interruptible(&toy_lock)) 
+    if (mutex_lock_interruptible(&cdev_lock)) 
         return -ERESTARTSYS;
 
     if (*ppos >= buf_len) {
@@ -48,18 +48,18 @@ static ssize_t toy_read(struct file *file,
 
 out: 
     pr_info("derchar: %zu bytes\n", ret);
-    mutex_unlock(&toy_lock);
+    mutex_unlock(&cdev_lock);
     return ret; 
 }
 
-static ssize_t toy_write(struct file *file, 
+static ssize_t cdev_write(struct file *file, 
                          const char __user *user_buf,
                          size_t count, 
                          loff_t *ppos)
 {
     ssize_t ret;
     
-    if (mutex_lock_interruptible(&toy_lock))
+    if (mutex_lock_interruptible(&cdev_lock))
         return -ERESTARTSYS;
 
     if (count > BUF_SIZE)
@@ -77,27 +77,27 @@ static ssize_t toy_write(struct file *file,
 
 out:
     pr_info("derchar: wrote %zu bytes\n", count);
-    mutex_unlock(&toy_lock);
+    mutex_unlock(&cdev_lock);
     return ret; 
 }
 
-static const struct file_operations toy_fops = {
+static const struct file_operations cdev_fops = {
     .owner = THIS_MODULE,
-    .open = toy_open,
-    .read = toy_read,
-    .write = toy_write,
+    .open = cdev_open,
+    .read = cdev_read,
+    .write = cdev_write,
 };
 
-static int __init toy_init(void) 
+static int __init cdev_init(void) 
 {
     int ret; 
     ret = alloc_chrdev_region(&devno, 0, 1, DEVICE_NAME);
     if (ret < 0)
         return ret;
 
-    cdev_init(&toy_cdev, &toy_fops);
+    cdev_init(&cdev, &cdev_fops);
 
-    ret = cdev_add(&toy_cdev, devno, 1);
+    ret = cdev_add(&cdev, devno, 1);
     if (ret < 0) {
         unregister_chrdev_region(devno, 1);
         return ret;
@@ -108,16 +108,16 @@ static int __init toy_init(void)
     return 0;
 }
 
-static void __exit toy_exit(void)
+static void __exit cdev_exit(void)
 {
-    cdev_del(&toy_cdev);
+    cdev_del(&cdev);
     unregister_chrdev_region(devno, 1);
     pr_info("derchar: unloaded\n");
 }
 
-module_init(toy_init);
-module_exit(toy_exit);
+module_init(cdev_init);
+module_exit(cdev_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Niyaz");
-MODULE_DESCRIPTION("Toy character device driver");
+MODULE_DESCRIPTION("cdev character device driver");
