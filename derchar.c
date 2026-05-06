@@ -17,6 +17,17 @@ static size_t buf_len;
 static int cdev_open(struct inode *inode, struct file *file) 
 {
     pr_info("derchar: device opened\n");
+
+    pr_info("derchar: file->f_pos: %lld\n", file->f_pos); 
+    pr_info("derchar: file->f_mode: 0x%x\n", file->f_mode); 
+    pr_info("derchar: file->f_flags: 0x%x\n", file->f_flags); 
+
+    return 0;
+}
+
+static int cdev_release(struct inode *inode, struct file *file)
+{
+    pr_info("derchar: device closed\n");
     return 0;
 }
 
@@ -84,11 +95,12 @@ out:
 static const struct file_operations cdev_fops = {
     .owner = THIS_MODULE,
     .open = cdev_open,
+    .release = cdev_release,
     .read = cdev_read,
     .write = cdev_write,
 };
 
-static int __init cdev_init(void) 
+static int __init cdev_initialise(void) 
 {
     int ret; 
     ret = alloc_chrdev_region(&devno, 0, 1, DEVICE_NAME);
@@ -105,6 +117,7 @@ static int __init cdev_init(void)
 
     pr_info("derchar: registered with major %d minor %d\n",
         MAJOR(devno), MINOR(devno));
+
     return 0;
 }
 
@@ -115,9 +128,9 @@ static void __exit cdev_exit(void)
     pr_info("derchar: unloaded\n");
 }
 
-module_init(cdev_init);
+module_init(cdev_initialise);
 module_exit(cdev_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Niyaz");
-MODULE_DESCRIPTION("cdev character device driver");
+MODULE_DESCRIPTION("character device driver");

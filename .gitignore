@@ -2,15 +2,15 @@
 .Module.symvers.cmd
 .module-common.o
 .modules.order.cmd
-.toychar.ko.cmd
-.toychar.mod.cmd
-.toychar.mod.o.cmd
-.toychar.o.cmd
+.derchar.ko.cmd
+.derchar.mod.cmd
+.derchar.mod.o.cmd
+.derchar.o.cmd
 Module.symvers
 modules.order
-toychar.ko
-toychar.mod
-toychar.mod.c
-toychar.mod.o
-toychar.o
+derchar.ko
+derchar.mod
+derchar.mod.c
+derchar.mod.o
+derchar.o
 
