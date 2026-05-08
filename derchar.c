@@ -31,10 +31,8 @@ static int cdev_release(struct inode *inode, struct file *file)
     return 0;
 }
 
-static ssize_t cdev_read(struct file *file, 
-                        char __user *user_buf,
-                        size_t count, 
-                        loff_t *ppos)
+static ssize_t cdev_read(struct file *file, char __user *user_buf,
+                         size_t count, loff_t *ppos)
 {
     ssize_t ret;
 
@@ -58,31 +56,36 @@ static ssize_t cdev_read(struct file *file,
     ret = count;
 
 out: 
-    pr_info("derchar: %zu bytes\n", ret);
+    pr_info("derchar: %zd bytes\n", ret);
     mutex_unlock(&cdev_lock);
     return ret; 
 }
 
-static ssize_t cdev_write(struct file *file, 
-                         const char __user *user_buf,
-                         size_t count, 
-                         loff_t *ppos)
+static ssize_t cdev_write(struct file *file, const char __user *user_buf,
+                          size_t count, loff_t *ppos)
 {
     ssize_t ret;
     
     if (mutex_lock_interruptible(&cdev_lock))
         return -ERESTARTSYS;
 
-    if (count > BUF_SIZE)
-        count = BUF_SIZE;
+    if (*ppos >= BUF_SIZE) {
+        ret = -ENOSPC; 
+        goto out;
+    }
+
+    if (count > BUF_SIZE - *ppos)
+        count = BUF_SIZE - *ppos;
 
     if (copy_from_user(kernel_buf, user_buf, count)) {
         ret = -EFAULT;
         goto out;
     }
 
-    buf_len = count;
-    *ppos = count;
+    *ppos += count; 
+
+    if (*ppos > buf_len) 
+        buf_len = *ppos;
 
     ret = count;
 
