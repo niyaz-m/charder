@@ -3,6 +3,7 @@
 #include <linux/uaccess.h> 
 #include <linux/cdev.h> 
 #include <linux/mutex.h> 
+#include <linux/slab.h>
 
 #define DEVICE_NAME "derchar"
 #define BUF_SIZE 256
@@ -11,7 +12,7 @@ static dev_t devno;
 static struct cdev cdev;
 static DEFINE_MUTEX(cdev_lock);
 
-static char kernel_buf[BUF_SIZE];
+static char *kernel_buf;
 static size_t buf_len;
 
 static int cdev_open(struct inode *inode, struct file *file) 
@@ -104,7 +105,7 @@ static loff_t cdev_llseek(struct file *file, loff_t offset, int whence)
         newpos = offset;
         break;
 
-    case SEEK_CUR: 
+     case SEEK_CUR: 
         newpos = file->f_pos + offset;
         break; 
 
@@ -139,6 +140,13 @@ static int __init cdev_initialise(void)
     if (ret < 0)
         return ret;
 
+    kernel_buf = kmalloc(BUF_SIZE, GFP_KERNEL);
+
+    if (!kernel_buf) {
+        unregister_chrdev_region(devno, 1);
+        return -ENOMEM;
+    }
+
     cdev_init(&cdev, &cdev_fops);
 
     ret = cdev_add(&cdev, devno, 1);
@@ -157,6 +165,9 @@ static void __exit cdev_exit(void)
 {
     cdev_del(&cdev);
     unregister_chrdev_region(devno, 1);
+
+    kfree(kernel_buf);
+
     pr_info("derchar: unloaded\n");
 }
 
