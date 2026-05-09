@@ -95,12 +95,41 @@ out:
     return ret; 
 }
 
+static loff_t cdev_llseek(struct file *file, loff_t offset, int whence) 
+{
+    loff_t newpos;
+
+    switch (whence) {
+    case SEEK_SET:
+        newpos = offset;
+        break;
+
+    case SEEK_CUR: 
+        newpos = file->f_pos + offset;
+        break; 
+
+    case SEEK_END:
+        newpos = buf_len + offset;
+        break;
+    
+    default: 
+        return -EINVAL;
+    }
+
+    if (newpos < 0 || newpos > BUF_SIZE)
+        return -EINVAL;
+
+    file->f_pos = newpos;
+    return newpos;
+}
+
 static const struct file_operations cdev_fops = {
     .owner = THIS_MODULE,
     .open = cdev_open,
     .release = cdev_release,
     .read = cdev_read,
     .write = cdev_write,
+    .llseek = cdev_llseek, 
 };
 
 static int __init cdev_initialise(void) 
