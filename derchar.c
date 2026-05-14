@@ -4,6 +4,7 @@
 #include <linux/cdev.h> 
 #include <linux/mutex.h> 
 #include <linux/slab.h>
+#include <linux/device.h> 
 
 #define DEVICE_NAME "derchar"
 #define BUF_SIZE 256
@@ -11,6 +12,7 @@
 static dev_t devno;
 static struct cdev cdev;
 static DEFINE_MUTEX(cdev_lock);
+static struct class *derchar_class;
 
 static char *kernel_buf;
 static size_t buf_len;
@@ -155,6 +157,23 @@ static int __init cdev_initialise(void)
         return ret;
     }
 
+    derchar_class = class_create("derchar_class");
+
+    if (IS_ERR(derchar_class)) {
+        cdev_del(&cdev);
+        unregister_chrdev_region(devno, 1);
+        return PTR_ERR(derchar_class);
+    }
+
+    if (device_create(derchar_class, NULL,
+                      devno, NULL, 
+                      DEVICE_NAME) == NULL) {
+        class_destroy(derchar_class);
+        cdev_del(&cdev);
+        unregister_chrdev_region(devno, 1);
+        return -ENOMEM;
+    }
+
     pr_info("derchar: registered with major %d minor %d\n",
         MAJOR(devno), MINOR(devno));
 
@@ -163,6 +182,9 @@ static int __init cdev_initialise(void)
 
 static void __exit cdev_exit(void)
 {
+    device_destroy(derchar_class, devno);
+    class_destroy(derchar_class);
+
     cdev_del(&cdev);
     unregister_chrdev_region(devno, 1);
 
